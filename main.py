@@ -11,6 +11,8 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"           # Automatically uses GPU if available
 )
 
+MAX_ALLOWED_TOKENS = 12000
+
 # 2. Define your System Prompt from the config
 SYSTEM_PROMPT = """# Task
 You are an expert cryptanalyst. You are provided with a ciphertext generated via homophonic substitution. Decipher the text and return ONLY the raw plaintext. Do not include conversational filler, labels, or explanations.
@@ -52,16 +54,14 @@ def solve_cipher(ciphertext):
         max_new_tokens=4096, 
         do_sample=False
     )
-    
-    full_response = tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True)
+
+    generated_ids = outputs[0][inputs['input_ids'].shape[-1]:]
+    full_response = tokenizer.decode(generated_ids, skip_special_tokens=True)
     
     # DeepSeek-R1 specific: Strip the reasoning block to get just the answer
     if "</think>" in full_response:
-        plaintext = full_response.split("</think>")[-1].strip()
-    else:
-        plaintext = full_response.strip()
-        
-    return plaintext
+        return full_response.split("</think>")[-1].strip()
+    return full_response.strip()
 
 
 # 3. Process your dataset (dataset.jsonl)
@@ -71,16 +71,29 @@ results = []
 with open(data_path, "r") as f:
     for line in f:
         item = json.loads(line)
-        # Assuming your jsonl has a field named 'ciphertext'
+        
+        # Check the 'length' field. 
+        # Note: 'length' in your JSON might be character count or word count.
+        # If 1 number = ~3-4 tokens, we should be cautious.
+        cipher_length = item.get("length", 0)
+        
+        # Basic heuristic: if cipher_length is too high, skip it
+        # Adjust '4000' based on whether 'length' refers to digits or characters
+        if cipher_length > 4000: 
+            print(f"Skipping entry with length {cipher_length} (too long)")
+            continue
+            
         ciphertext = item.get("ciphertext", "")
+        print(f"Processing length {cipher_length}...")
         
-        print(f"Processing: {ciphertext[:30]}...")
-        result = solve_cipher(ciphertext)
-        
-        results.append({
-            "ciphertext": ciphertext,
-            "deciphered": result
-        })
+        try:
+            result = solve_cipher(ciphertext)
+            results.append({
+                "length": cipher_length,
+                "deciphered": result
+            })
+        except Exception as e:
+            print(f"Error processing item: {e}")
 
 # 4. Save results
 with open("data/results/output.json", "w") as f:
