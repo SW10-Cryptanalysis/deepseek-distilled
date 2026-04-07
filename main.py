@@ -1,5 +1,6 @@
 import json
 import torch
+import random
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # 1. Setup Model and Tokenizer
@@ -66,37 +67,23 @@ def solve_cipher(ciphertext):
 
 # 3. Process your dataset (dataset.jsonl)
 data_path = "data/dataset.jsonl"
-results = []
-
 with open(data_path, "r") as f:
-    for line in f:
-        item = json.loads(line)
-        
-        # Check the 'length' field. 
-        # Note: 'length' in your JSON might be character count or word count.
-        # If 1 number = ~3-4 tokens, we should be cautious.
-        cipher_length = item.get("length", 0)
-        
-        # Basic heuristic: if cipher_length is too high, skip it
-        # Adjust '4000' based on whether 'length' refers to digits or characters
-        if cipher_length > 4000: 
-            print(f"Skipping entry with length {cipher_length} (too long)")
-            continue
-            
-        ciphertext = item.get("ciphertext", "")
-        print(f"Processing length {cipher_length}...")
-        
-        try:
-            result = solve_cipher(ciphertext)
-            results.append({
-                "length": cipher_length,
-                "deciphered": result
-            })
-        except Exception as e:
-            print(f"Error processing item: {e}")
+    # Filter for items that fit your length criteria first
+    valid_entries = [json.loads(line) for line in f if json.loads(line).get("length", 0) <= MAX_CIPHER_LENGTH]
 
-# 4. Save results
-with open("data/results/output.json", "w") as f:
-    json.dump(results, f, indent=4)
-
-print("Done! Results saved to data/results/output.json")
+if not valid_entries:
+    print("No entries found matching the length criteria!")
+else:
+    # 3. Pick ONE random entry
+    random_item = random.choice(valid_entries)
+    ciphertext = random_item.get("ciphertext", "")
+    actual_length = random_item.get("length")
+    
+    print(f"--- Running Random Test (Length: {actual_length}) ---")
+    
+    reasoning, plaintext = solve_cipher(ciphertext)
+    
+    print("\n--- Model Reasoning ---")
+    print(reasoning)
+    print("\n--- Final Output ---")
+    print(plaintext)
