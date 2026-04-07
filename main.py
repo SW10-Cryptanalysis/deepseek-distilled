@@ -12,7 +12,7 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto"           # Automatically uses GPU if available
 )
 
-MAX_ALLOWED_TOKENS = 12000
+MAX_CIPHER_LENGTH = 3000
 
 # 2. Define your System Prompt from the config
 SYSTEM_PROMPT = """# Task
