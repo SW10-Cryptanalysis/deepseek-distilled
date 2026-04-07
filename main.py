@@ -35,7 +35,6 @@ Your entire response must be only the plaintext string of lowercase letters (a-z
 """
 
 def solve_cipher(ciphertext):
-    # Construct the Chat Template (Zero-Shot)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Input ciphertext:\n{ciphertext}"},
@@ -47,12 +46,11 @@ def solve_cipher(ciphertext):
         return_tensors="pt",
     ).to(model.device)
 
-    # Note: temperature=0.0 is set via do_sample=False
+    # Use **inputs instead of just inputs
     outputs = model.generate(
-        inputs, 
+        **inputs, 
         max_new_tokens=4096, 
-        do_sample=False, 
-        temperature=1.0 # Temperature is ignored when do_sample=False
+        do_sample=False
     )
     
     full_response = tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True)
@@ -64,6 +62,7 @@ def solve_cipher(ciphertext):
         plaintext = full_response.strip()
         
     return plaintext
+
 
 # 3. Process your dataset (dataset.jsonl)
 data_path = "data/dataset.jsonl"
