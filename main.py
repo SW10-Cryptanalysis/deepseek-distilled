@@ -49,21 +49,32 @@ def solve_cipher(ciphertext):
         return_tensors="pt",
     ).to(model.device)
 
-    # Use **inputs instead of just inputs
     outputs = model.generate(
         **inputs, 
         max_new_tokens=4096, 
         do_sample=False
     )
-
+    
     generated_ids = outputs[0][inputs['input_ids'].shape[-1]:]
     full_response = tokenizer.decode(generated_ids, skip_special_tokens=True)
     
-    # DeepSeek-R1 specific: Strip the reasoning block to get just the answer
-    if "</think>" in full_response:
-        return full_response.split("</think>")[-1].strip()
-    return full_response.strip()
-
+    # Robust splitting logic
+    if "<think>" in full_response and "</think>" in full_response:
+        # Standard R1 output: [Reasoning] </think> [Answer]
+        parts = full_response.split("</think>")
+        reasoning = parts[0].replace("<think>", "").strip()
+        plaintext = parts[1].strip()
+    elif "</think>" in full_response:
+        # Sometimes the opening tag gets swallowed
+        parts = full_response.split("</think>")
+        reasoning = parts[0].strip()
+        plaintext = parts[1].strip()
+    else:
+        # No reasoning block found at all
+        reasoning = "No separate reasoning block generated."
+        plaintext = full_response.strip()
+        
+    return reasoning, plaintext
 
 # 3. Process your dataset (dataset.jsonl)
 data_path = "data/dataset.jsonl"
