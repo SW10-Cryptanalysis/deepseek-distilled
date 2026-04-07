@@ -54,7 +54,8 @@ def solve_cipher_few_shot(target_ciphertext, few_shot_path):
         do_sample=False
     )
     
-    full_response = tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True)
+    # Look at 'input_ids' specifically to get the shape
+    full_response = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
     
     if "</think>" in full_response:
         return full_response.split("</think>")[-1].strip()
