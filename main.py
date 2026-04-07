@@ -67,7 +67,7 @@ dataset_path = "data/dataset.jsonl"
 
 # Pick a random test case from your main dataset (Length < 200 for best results)
 with open(dataset_path, "r") as f:
-    valid_tests = [json.loads(line) for line in f if json.loads(line).get("length", 0) <= 400]
+    valid_tests = [json.loads(line) for line in f if json.loads(line).get("length", 0) <= 400 and json.loads(line).get("redundancy", 0) == 0]
 
 test_item = random.choice(valid_tests)
 print(f"Testing Length: {test_item['length']}")
